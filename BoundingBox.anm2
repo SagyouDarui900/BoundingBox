@@ -1,0 +1,13 @@
+--label:Bounding Box
+--track@threshold:しきい値,0,255,128,1
+--track@opacity:透明度,0,255,255,1
+--check@binary:透明度を2値化,0
+--check@only:ボックスのみ,0
+--color@color:色,0x000000
+
+local bounding_box = obj.module("BoundingBox")
+local data, w, h = obj.getpixeldata("object", "rgba")
+local r, g, b = RGB(color)
+
+bounding_box.bounding_box(data, w, h, threshold, opacity, binary, only, r, g, b)
+obj.putpixeldata("object", data, w, h, "rgba")
