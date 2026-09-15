@@ -2,8 +2,6 @@
 
 AviUtl2のテキストなどの個別オブジェクトに、アルファ情報をもとにしたバウンディングボックスを付加するスクリプトです。
 
-![AviUtl2](https://img.shields.io/badge/AviUtl2-script-blue)
-
 ## 概要
 
 現在のオブジェクト画像から不透明な範囲を検出し、その外接矩形を描画します。
@@ -67,7 +65,7 @@ Visual Studio Build Toolsなど、`cl.exe`が利用できる環境で、次の�
 
 ## 参考・作成経緯
 
-旧AviUtl向けのもる氏が作成した`BoundingBox.anm`を参考に、AviUtl2のLuaスクリプトおよびスクリプトモジュール形式へ移植しました。
+旧AviUtl向けにもる氏が作成した`BoundingBox.anm`を参考に、AviUtl2のLuaスクリプトおよびスクリプトモジュール形式へ移植しました。
 
 元実装の参考:
 
@@ -79,3 +77,18 @@ Visual Studio Build Toolsなど、`cl.exe`が利用できる環境で、次の�
 
 - AviUtl2のバージョンやSDKの変更により、動作しなくなる場合があります。
 - 生成AIによる実装のため、利用前にソースコードと動作を確認してください。
+
+## ライセンス・謝辞
+
+本プロジェクトの`BoundingBox.cpp`は、AviUtl ExEdit2 Plugin SDKのヘッダーを使用してビルドします。
+
+AviUtl ExEdit2 Plugin SDKは、ＫＥＮくん氏によるMIT Licenseのソフトウェアです。
+
+```text
+AviUtl ExEdit2 Plugin SDK
+Copyright (c) 2025 Kenkun
+Licensed under the MIT License.
+```
+
+SDKのライセンス全文は、SDKに付属する`license.txt`を参照してください。
+このリポジトリではAviUtl ExEdit2 Plugin SDK本体のソースコードは再配布していません。
