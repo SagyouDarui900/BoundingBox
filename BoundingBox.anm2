@@ -1,4 +1,4 @@
---label:Bounding Box
+--label:装飾
 --track@threshold:しきい値,0,255,128,1
 --track@opacity:透明度,0,255,255,1
 --check@binary:透明度を2値化,0
