@@ -67,16 +67,15 @@ Visual Studio Build Toolsなど、`cl.exe`が利用できる環境で、次の�
 
 ## 参考・作成経緯
 
-旧AviUtl向けの`BoundingBox.anm`を参考に、AviUtl2のLuaスクリプトおよびスクリプトモジュール形式へ移植しました。
+旧AviUtl向けのもる氏が作成した`BoundingBox.anm`を参考に、AviUtl2のLuaスクリプトおよびスクリプトモジュール形式へ移植しました。
 
 元実装の参考:
 
-- [もるさんのBoundingBox.anm関連ファイル](https://drive.google.com/drive/folders/1DaBcNEEVqcmz6iUaLLFfUlsjwz39yyz3)
+- [BoundingBox.anm](https://drive.google.com/drive/folders/1DaBcNEEVqcmz6iUaLLFfUlsjwz39yyz3)
 
 本移植版は、元実装の動作や設定を確認しながら、生成AIを用いてAviUtl2向けに生成・調整したものです。
 
 ## 注意事項
 
-- `BoundingBox.mod2`はWindows向けのモジュールです。
 - AviUtl2のバージョンやSDKの変更により、動作しなくなる場合があります。
 - 生成AIによる実装のため、利用前にソースコードと動作を確認してください。
