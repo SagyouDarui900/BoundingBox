@@ -12,9 +12,24 @@
 
 namespace {
 
+inline void blend_pixel(PIXEL_RGBA& dst, const PIXEL_RGBA& src) {
+    if (src.a == 255) {
+        dst = src;
+    } else if (src.a == 0) {
+        return;
+    } else {
+        const uint32_t a = src.a;
+        const uint32_t inv_a = 255 - a;
+        dst.r = static_cast<uint8_t>((src.r * a + dst.r * inv_a) / 255);
+        dst.g = static_cast<uint8_t>((src.g * a + dst.g * inv_a) / 255);
+        dst.b = static_cast<uint8_t>((src.b * a + dst.b * inv_a) / 255);
+        dst.a = static_cast<uint8_t>(src.a + (dst.a * inv_a) / 255);
+    }
+}
+
 void bounding_box(SCRIPT_MODULE_PARAM* param) {
-    if (param->get_param_num() != 12) {
-        param->set_error("bounding_box expects 12 arguments");
+    if (param->get_param_num() != 13) {
+        param->set_error("bounding_box expects 13 arguments");
         return;
     }
 
@@ -25,11 +40,12 @@ void bounding_box(SCRIPT_MODULE_PARAM* param) {
     const int line_width = std::max(0, param->get_param_int(4));
     const int opacity = std::clamp(param->get_param_int(5), 0, 255);
     const bool fill = param->get_param_int(6) != 0;
-    const bool binary = param->get_param_int(7) != 0;
-    const bool only = param->get_param_int(8) != 0;
-    const uint8_t r = static_cast<uint8_t>(std::clamp(param->get_param_int(9), 0, 255));
-    const uint8_t g = static_cast<uint8_t>(std::clamp(param->get_param_int(10), 0, 255));
-    const uint8_t b = static_cast<uint8_t>(std::clamp(param->get_param_int(11), 0, 255));
+    const bool text_front = param->get_param_int(7) != 0;
+    const bool binary = param->get_param_int(8) != 0;
+    const bool only = param->get_param_int(9) != 0;
+    const uint8_t r = static_cast<uint8_t>(std::clamp(param->get_param_int(10), 0, 255));
+    const uint8_t g = static_cast<uint8_t>(std::clamp(param->get_param_int(11), 0, 255));
+    const uint8_t b = static_cast<uint8_t>(std::clamp(param->get_param_int(12), 0, 255));
 
     if (!pixels || width <= 0 || height <= 0) {
         param->set_error("invalid image data or image size");
@@ -53,7 +69,6 @@ void bounding_box(SCRIPT_MODULE_PARAM* param) {
 found_top:;
 
     if (top == height) {
-        // 不透明ピクセルが存在しない場合は何もしない
         return;
     }
 
@@ -75,14 +90,12 @@ found_bottom:;
     // top から bottom までの行について left と right を更新
     for (int y = top; y <= bottom; ++y) {
         const PIXEL_RGBA* row = pixels + y * width;
-        // 左端の更新
         for (int x = 0; x < left; ++x) {
             if (row[x].a >= threshold) {
                 left = x;
                 break;
             }
         }
-        // 右端の更新
         for (int x = width - 1; x > right; --x) {
             if (row[x].a >= threshold) {
                 right = x;
@@ -108,13 +121,11 @@ found_bottom:;
         std::memset(pixels, 0, sizeof(PIXEL_RGBA) * width * height);
 
         if (fill || all_border) {
-            // 全体塗りつぶし
             for (int y = top; y <= bottom; ++y) {
                 PIXEL_RGBA* row = pixels + y * width + left;
                 std::fill_n(row, rect_w, box_pixel);
             }
         } else if (line_width > 0) {
-            // 枠線のみ描画
             for (int y = top; y <= bottom; ++y) {
                 PIXEL_RGBA* row = pixels + y * width;
                 if (y < top + line_width || y > bottom - line_width) {
@@ -126,23 +137,52 @@ found_bottom:;
             }
         }
     } else {
-        // 通常: 元オブジェクトの不透明部分を保持
+        // 「通常（元オブジェクトを表示）」
         for (int y = top; y <= bottom; ++y) {
             PIXEL_RGBA* row = pixels + y * width;
             const bool is_y_border = (line_width > 0) && (y < top + line_width || y > bottom - line_width);
 
             if (all_border || is_y_border) {
                 // 上下の枠線行
-                std::fill_n(row + left, rect_w, box_pixel);
+                if (text_front) {
+                    // 文字を前面: 文字部分(a >= threshold)は保持、余白のみ枠線色
+                    for (int x = left; x <= right; ++x) {
+                        if (row[x].a < threshold) {
+                            row[x] = box_pixel;
+                        }
+                    }
+                } else {
+                    // 図形を前面: 文字の上から枠線を描画（ブレンド）
+                    for (int x = left; x <= right; ++x) {
+                        blend_pixel(row[x], box_pixel);
+                    }
+                }
             } else {
-                // 内部行
+                // 内部行の左右枠線
                 if (line_width > 0) {
-                    // 左右の枠線
-                    std::fill_n(row + left, line_width, box_pixel);
-                    std::fill_n(row + right - line_width + 1, line_width, box_pixel);
+                    const int l_end = left + line_width - 1;
+                    const int r_start = right - line_width + 1;
+
+                    if (text_front) {
+                        // 文字を前面
+                        for (int x = left; x <= l_end; ++x) {
+                            if (row[x].a < threshold) row[x] = box_pixel;
+                        }
+                        for (int x = r_start; x <= right; ++x) {
+                            if (row[x].a < threshold) row[x] = box_pixel;
+                        }
+                    } else {
+                        // 図形を前面
+                        for (int x = left; x <= l_end; ++x) {
+                            blend_pixel(row[x], box_pixel);
+                        }
+                        for (int x = r_start; x <= right; ++x) {
+                            blend_pixel(row[x], box_pixel);
+                        }
+                    }
                 }
 
-                // 枠線の内側
+                // 枠線の内側（背景塗りつぶし）
                 if (fill) {
                     const int inner_start = left + line_width;
                     const int inner_end = right - line_width;
