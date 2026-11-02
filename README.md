@@ -58,7 +58,6 @@ AviUtl2のテキストなどの個別オブジェクトに、アルファ情報�
 | `BoundingBox.mod2` | 高速ピクセル処理を行うスクリプトモジュール（64bit DLL） |
 | `BoundingBox.cpp` | `BoundingBox.mod2`のC++ソースコード |
 | `build-BoundingBox.ps1` | スクリプトモジュールのビルドスクリプト（MSVC / cl.exe） |
-| `.github/workflows/` | GitHub Actions用ワークフロー（タグpushでmod2/anm2をRelease直置き） |
 
 ## ビルド
 
