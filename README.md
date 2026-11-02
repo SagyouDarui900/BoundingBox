@@ -54,7 +54,6 @@ AviUtl2のテキストなどの個別オブジェクトに、アルファ情報�
 | `BoundingBox.cpp` | `BoundingBox.mod2`のC++ソースコード |
 | `build-BoundingBox.ps1` | スクリプトモジュールのビルドスクリプト（MSVC / cl.exe） |
 | `package.ps1` | 配布用ZIPアーカイブ（`dist/BoundingBox.zip`）を作成するスクリプト |
-| `.github/workflows/` | GitHub Actions用ワークフロー（自動ビルド＆リリース） |
 
 ## ビルド
 
