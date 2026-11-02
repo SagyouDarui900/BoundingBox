@@ -12,19 +12,42 @@
 
 namespace {
 
-inline void blend_pixel(PIXEL_RGBA& dst, const PIXEL_RGBA& src) {
+inline void blend_pixel_premul(PIXEL_RGBA& dst, const PIXEL_RGBA& src) {
     if (src.a == 255) {
         dst = src;
     } else if (src.a == 0) {
         return;
     } else {
-        const uint32_t a = src.a;
-        const uint32_t inv_a = 255 - a;
-        dst.r = static_cast<uint8_t>((src.r * a + dst.r * inv_a) / 255);
-        dst.g = static_cast<uint8_t>((src.g * a + dst.g * inv_a) / 255);
-        dst.b = static_cast<uint8_t>((src.b * a + dst.b * inv_a) / 255);
-        dst.a = static_cast<uint8_t>(src.a + (dst.a * inv_a) / 255);
+        const uint32_t inv_a = 255 - src.a;
+        dst.r = static_cast<uint8_t>(std::min(255u, src.r + (dst.r * inv_a + 127) / 255));
+        dst.g = static_cast<uint8_t>(std::min(255u, src.g + (dst.g * inv_a + 127) / 255));
+        dst.b = static_cast<uint8_t>(std::min(255u, src.b + (dst.b * inv_a + 127) / 255));
+        dst.a = static_cast<uint8_t>(std::min(255u, src.a + (dst.a * inv_a + 127) / 255));
     }
+}
+
+int get_int_value(SCRIPT_MODULE_PARAM* param, int index) {
+    auto type = param->get_param_type ? param->get_param_type(index) : PARAM_TYPE::NONE;
+    if (type == PARAM_TYPE::BOOLEAN) {
+        return param->get_param_boolean(index) ? 1 : 0;
+    }
+    int v = param->get_param_int(index);
+    if (v == 0) {
+        double dv = param->get_param_double(index);
+        if (dv != 0.0) {
+            v = static_cast<int>(dv + 0.5);
+        }
+    }
+    return v;
+}
+
+bool get_bool_value(SCRIPT_MODULE_PARAM* param, int index) {
+    auto type = param->get_param_type ? param->get_param_type(index) : PARAM_TYPE::NONE;
+    if (type == PARAM_TYPE::BOOLEAN) {
+        return param->get_param_boolean(index);
+    }
+    // NUMBER やその他の場合は整数値として判定（0はfalse）
+    return get_int_value(param, index) != 0;
 }
 
 void bounding_box(SCRIPT_MODULE_PARAM* param) {
@@ -34,18 +57,18 @@ void bounding_box(SCRIPT_MODULE_PARAM* param) {
     }
 
     auto* pixels = static_cast<PIXEL_RGBA*>(param->get_param_data(0));
-    const int width = param->get_param_int(1);
-    const int height = param->get_param_int(2);
-    const int threshold = std::clamp(param->get_param_int(3), 0, 255);
-    const int line_width = std::max(0, param->get_param_int(4));
-    const int opacity = std::clamp(param->get_param_int(5), 0, 255);
-    const bool fill = param->get_param_int(6) != 0;
-    const bool text_front = param->get_param_int(7) != 0;
-    const bool binary = param->get_param_int(8) != 0;
-    const bool only = param->get_param_int(9) != 0;
-    const uint8_t r = static_cast<uint8_t>(std::clamp(param->get_param_int(10), 0, 255));
-    const uint8_t g = static_cast<uint8_t>(std::clamp(param->get_param_int(11), 0, 255));
-    const uint8_t b = static_cast<uint8_t>(std::clamp(param->get_param_int(12), 0, 255));
+    const int width = get_int_value(param, 1);
+    const int height = get_int_value(param, 2);
+    const int threshold = std::clamp(get_int_value(param, 3), 0, 255);
+    const int line_width = std::max(0, get_int_value(param, 4));
+    const int opacity = std::clamp(get_int_value(param, 5), 0, 255);
+    const bool fill = get_bool_value(param, 6);
+    const bool text_front = get_bool_value(param, 7);
+    const bool binary = get_bool_value(param, 8);
+    const bool only = get_bool_value(param, 9);
+    const uint8_t r = static_cast<uint8_t>(std::clamp(get_int_value(param, 10), 0, 255));
+    const uint8_t g = static_cast<uint8_t>(std::clamp(get_int_value(param, 11), 0, 255));
+    const uint8_t b = static_cast<uint8_t>(std::clamp(get_int_value(param, 12), 0, 255));
 
     if (!pixels || width <= 0 || height <= 0) {
         param->set_error("invalid image data or image size");
@@ -56,7 +79,6 @@ void bounding_box(SCRIPT_MODULE_PARAM* param) {
     int top = height;
     int bottom = -1;
 
-    // 上から走査
     for (int y = 0; y < height; ++y) {
         const PIXEL_RGBA* row = pixels + y * width;
         for (int x = 0; x < width; ++x) {
@@ -72,7 +94,6 @@ found_top:;
         return;
     }
 
-    // 下から走査
     for (int y = height - 1; y >= top; --y) {
         const PIXEL_RGBA* row = pixels + y * width;
         for (int x = 0; x < width; ++x) {
@@ -87,7 +108,6 @@ found_bottom:;
     int left = width;
     int right = -1;
 
-    // top から bottom までの行について left と right を更新
     for (int y = top; y <= bottom; ++y) {
         const PIXEL_RGBA* row = pixels + y * width;
         for (int x = 0; x < left; ++x) {
@@ -108,8 +128,14 @@ found_bottom:;
         return;
     }
 
+    // アルファ値の決定 (binary有効時は255、無効時はopacity)
     const uint8_t box_alpha = binary ? 255 : static_cast<uint8_t>(opacity);
-    const PIXEL_RGBA box_pixel = { r, g, b, box_alpha };
+
+    // Premultiplied Alpha
+    const uint8_t pr = static_cast<uint8_t>((r * box_alpha + 127) / 255);
+    const uint8_t pg = static_cast<uint8_t>((g * box_alpha + 127) / 255);
+    const uint8_t pb = static_cast<uint8_t>((b * box_alpha + 127) / 255);
+    const PIXEL_RGBA box_pixel = { pr, pg, pb, box_alpha };
 
     // 2. 描画処理
     const int rect_w = right - left + 1;
@@ -145,16 +171,14 @@ found_bottom:;
             if (all_border || is_y_border) {
                 // 上下の枠線行
                 if (text_front) {
-                    // 文字を前面: 文字部分(a >= threshold)は保持、余白のみ枠線色
                     for (int x = left; x <= right; ++x) {
                         if (row[x].a < threshold) {
                             row[x] = box_pixel;
                         }
                     }
                 } else {
-                    // 図形を前面: 文字の上から枠線を描画（ブレンド）
                     for (int x = left; x <= right; ++x) {
-                        blend_pixel(row[x], box_pixel);
+                        blend_pixel_premul(row[x], box_pixel);
                     }
                 }
             } else {
@@ -164,7 +188,6 @@ found_bottom:;
                     const int r_start = right - line_width + 1;
 
                     if (text_front) {
-                        // 文字を前面
                         for (int x = left; x <= l_end; ++x) {
                             if (row[x].a < threshold) row[x] = box_pixel;
                         }
@@ -172,12 +195,11 @@ found_bottom:;
                             if (row[x].a < threshold) row[x] = box_pixel;
                         }
                     } else {
-                        // 図形を前面
                         for (int x = left; x <= l_end; ++x) {
-                            blend_pixel(row[x], box_pixel);
+                            blend_pixel_premul(row[x], box_pixel);
                         }
                         for (int x = r_start; x <= right; ++x) {
-                            blend_pixel(row[x], box_pixel);
+                            blend_pixel_premul(row[x], box_pixel);
                         }
                     }
                 }
