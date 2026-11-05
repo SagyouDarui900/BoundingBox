@@ -73,7 +73,4 @@ MSVC x64 環境（Visual Studio または Visual Studio Build Tools）が導入�
 ## ライセンス・規約
 
 - 本スクリプトは、AviUtl 向けスクリプト「BoundingBox.anm」（もる氏作）を基に、AviUtl2 向けに移植したものです。
-- 二次配布規約:
-  - 改変および非商用での二次配布: 可能
-  - 商用目的での二次配布: 禁止（元スクリプトの規約に準拠）
 - C++ モジュールは AviUtl ExEdit2 Plugin SDK（Kenkun氏作、MIT License）を使用しています。
