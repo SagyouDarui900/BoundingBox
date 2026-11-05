@@ -1,5 +1,5 @@
 --label:装飾
---track@threshold:しきい値,0,255,128,1
+--track@threshold:しきい値,0,255,1,1
 --track@line_width:線の太さ,0,100,1,1
 --track@opacity:透明度,0,255,255,1
 --check@fill:背景塗りつぶし,1
@@ -9,8 +9,15 @@
 --color@box_color:色,0x000000
 
 local bounding_box = obj.module("BoundingBox")
-local data, w, h = obj.getpixeldata("object", "rgba")
-local r, g, b = RGB(box_color)
+if not bounding_box then
+    return
+end
 
+local data, w, h = obj.getpixeldata("object", "rgba")
+if not data or w <= 0 or h <= 0 then
+    return
+end
+
+local r, g, b = RGB(box_color)
 bounding_box.bounding_box(data, w, h, threshold, line_width, opacity, fill, text_front, binary, only, r, g, b)
 obj.putpixeldata("object", data, w, h, "rgba")
